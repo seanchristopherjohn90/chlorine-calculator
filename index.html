@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chlorine Tablet Calculator</title>
+  <style>
+    :root { --bg:#0b0d12; --card:#121625; --muted:#aab3c5; --text:#eef2ff; --line:#232a42; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 22px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    p { margin: 0 0 16px; color: var(--muted); line-height: 1.35; }
+    .grid { display:grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 860px){ .grid{ grid-template-columns: 1.1fr .9fr; } }
+    .card { background: var(--card); border:1px solid var(--line); border-radius: 16px; padding: 16px; }
+    .row { display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 560px){ .row{ grid-template-columns: 1fr 1fr; } }
+    label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input, select, button {
+      width:100%; box-sizing:border-box; border-radius: 12px; border:1px solid var(--line);
+      background:#0e1220; color: var(--text); padding: 10px 12px; font-size: 14px;
+    }
+    input::placeholder { color:#6b7491; }
+    .btnrow { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+    button { cursor:pointer; }
+    button.preset { background:#0f1630; }
+    button.preset.active { outline: 2px solid #4f7cff; border-color:#4f7cff; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .hr { height:1px; background: var(--line); margin: 14px 0; }
+    .result { font-size: 16px; line-height: 1.5; }
+    .big { font-size: 28px; font-weight: 700; margin: 6px 0 2px; }
+    .pill { display:inline-block; padding: 4px 10px; border:1px solid var(--line); border-radius:999px; font-size: 12px; color: var(--muted); }
+    .warn { color:#ffd38a; }
+    .ok { color:#9cffbf; }
+    .footer { margin-top: 14px; font-size: 12px; color: var(--muted); }
+    .two { display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 560px){ .two{ grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Chlorine Tablet Calculator</h1>
+    <p>Calculate how many chlorine tablets are needed for a target dose (mg/L) based on tank volume (L) or dimensions.</p>
+
+    <div class="grid">
+      <div class="card">
+        <div class="two">
+          <div>
+            <label for="tabletMg">Tablet strength (mg available chlorine per tablet)</label>
+            <input id="tabletMg" type="number" min="1" step="1" value="1000" />
+            <div class="muted">Default: 1000 mg per tablet</div>
+          </div>
+
+          <div>
+            <label for="rounding">Rounding</label>
+            <select id="rounding">
+              <option value="exact">Exact (allow fractions)</option>
+              <option value="nearest">Nearest whole tablet</option>
+              <option value="up">Round up (safer residual)</option>
+              <option value="down">Round down</option>
+            </select>
+            <div class="muted">If you can’t split tablets, use a whole-tablet option.</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <label>Target dose (mg/L)</label>
+        <div class="btnrow">
+          <button class="preset" data-dose="10" type="button">10 mg/L</button>
+          <button class="preset" data-dose="25" type="button">25 mg/L</button>
+          <button class="preset" data-dose="50" type="button">50 mg/L</button>
+        </div>
+        <div style="margin-top:10px;">
+          <label for="doseCustom">Or enter custom dose (mg/L)</label>
+          <input id="doseCustom" type="number" min="0" step="0.1" placeholder="e.g., 12.5" />
+          <div class="muted">Using: <span id="doseUsing" class="pill">10 mg/L</span></div>
+        </div>
+
+        <div class="hr"></div>
+
+        <label>Tank size input</label>
+        <div class="two">
+          <div>
+            <label for="mode">Volume method</label>
+            <select id="mode">
+              <option value="liters">I know volume (liters)</option>
+              <option value="rect">Rectangular tank (L × W × H)</option>
+              <option value="cyl">Cylindrical tank (radius × height)</option>
+            </select>
+          </div>
+          <div>
+            <label for="unit">Dimensions units</label>
+            <select id="unit">
+              <option value="m">meters (m)</option>
+              <option value="cm">centimeters (cm)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="litersBox" style="margin-top:10px;">
+          <label for="liters">Tank volume (L)</label>
+          <input id="liters" type="number" min="0" step="0.1" placeholder="e.g., 1000" />
+        </div>
+
+        <div id="rectBox" style="display:none; margin-top:10px;">
+          <div class="row">
+            <div>
+              <label for="len">Length</label>
+              <input id="len" type="number" min="0" step="0.01" placeholder="e.g., 1.2" />
+            </div>
+            <div>
+              <label for="wid">Width</label>
+              <input id="wid" type="number" min="0" step="0.01" placeholder="e.g., 0.8" />
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="hei">Water height / depth</label>
+            <input id="hei" type="number" min="0" step="0.01" placeholder="e.g., 0.6" />
+          </div>
+          <div class="muted" style="margin-top:6px;">Liters = L × W × H × 1000 (if meters) or ÷ 1000 (if cm).</div>
+        </div>
+
+        <div id="cylBox" style="display:none; margin-top:10px;">
+          <div class="row">
+            <div>
+              <label for="rad">Radius</label>
+              <input id="rad" type="number" min="0" step="0.01" placeholder="e.g., 0.45" />
+            </div>
+            <div>
+              <label for="chei">Water height</label>
+              <input id="chei" type="number" min="0" step="0.01" placeholder="e.g., 1.0" />
+            </div>
+          </div>
+          <div class="muted" style="margin-top:6px;">Liters = π × r² × h × 1000 (if meters) or ÷ 1000 (if cm).</div>
+        </div>
+
+      </div>
+
+      <div class="card">
+        <div class="result">
+          <div class="pill" id="volumeTag">Volume: — L</div>
+          <div class="pill" id="targetTag" style="margin-left:8px;">Target: — mg/L</div>
+
+          <div class="big" id="tabletsOut">— tablets</div>
+          <div id="subOut" class="muted">Enter values to calculate.</div>
+
+          <div class="hr"></div>
+
+          <div id="detailsOut" class="muted"></div>
+          <div class="footer">
+            Note: This is a theoretical dose based on “mg/L × liters”. Real residual can vary with water demand and contact time.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const tabletMg = $("tabletMg");
+    const rounding = $("rounding");
+
+    const mode = $("mode");
+    const unit = $("unit");
+
+    const liters = $("liters");
+    const len = $("len"), wid = $("wid"), hei = $("hei");
+    const rad = $("rad"), chei = $("chei");
+
+    const litersBox = $("litersBox");
+    const rectBox = $("rectBox");
+    const cylBox = $("cylBox");
+
+    const doseCustom = $("doseCustom");
+    const doseUsing = $("doseUsing");
+    const presetButtons = Array.from(document.querySelectorAll("button.preset"));
+
+    const volumeTag = $("volumeTag");
+    const targetTag = $("targetTag");
+    const tabletsOut = $("tabletsOut");
+    const subOut = $("subOut");
+    const detailsOut = $("detailsOut");
+
+    let currentDose = 10;
+
+    function setDose(d) {
+      currentDose = Number(d);
+      doseUsing.textContent = `${currentDose} mg/L`;
+      presetButtons.forEach(b => b.classList.toggle("active", Number(b.dataset.dose) === currentDose));
+      doseCustom.value = "";
+      calc();
+    }
+
+    presetButtons.forEach(b => b.addEventListener("click", () => setDose(b.dataset.dose)));
+
+    doseCustom.addEventListener("input", () => {
+      const v = Number(doseCustom.value);
+      if (!isFinite(v) || v < 0) return;
+      currentDose = v;
+      doseUsing.textContent = `${currentDose} mg/L`;
+      presetButtons.forEach(b => b.classList.remove("active"));
+      calc();
+    });
+
+    function showMode() {
+      litersBox.style.display = mode.value === "liters" ? "block" : "none";
+      rectBox.style.display   = mode.value === "rect"   ? "block" : "none";
+      cylBox.style.display    = mode.value === "cyl"    ? "block" : "none";
+      calc();
+    }
+
+    mode.addEventListener("change", showMode);
+    unit.addEventListener("change", calc);
+
+    [tabletMg, rounding, liters, len, wid, hei, rad, chei].forEach(el => el.addEventListener("input", calc));
+
+    function toLitersFromRect(L, W, H, u){
+      if (u === "m") return L * W * H * 1000;
+      // cm -> cm^3 / 1000 = L
+      return (L * W * H) / 1000;
+    }
+
+    function toLitersFromCyl(r, h, u){
+      if (u === "m") return Math.PI * r * r * h * 1000;
+      // cm: volume cm^3 then /1000
+      return (Math.PI * r * r * h) / 1000;
+    }
+
+    function roundTablets(x, mode){
+      if (mode === "nearest") return Math.round(x);
+      if (mode === "up") return Math.ceil(x);
+      if (mode === "down") return Math.floor(x);
+      return x; // exact
+    }
+
+    function fmt(n, digits=2){
+      if (!isFinite(n)) return "—";
+      const d = Math.abs(n) >= 100 ? 1 : digits;
+      return Number(n).toLocaleString(undefined, { maximumFractionDigits: d });
+    }
+
+    function calc(){
+      const tab = Number(tabletMg.value);
+      const dose = Number(currentDose);
+
+      let volL = NaN;
+      if (mode.value === "liters") {
+        volL = Number(liters.value);
+      } else if (mode.value === "rect") {
+        volL = toLitersFromRect(Number(len.value), Number(wid.value), Number(hei.value), unit.value);
+      } else if (mode.value === "cyl") {
+        volL = toLitersFromCyl(Number(rad.value), Number(chei.value), unit.value);
+      }
+
+      const valid = isFinite(tab) && tab > 0 && isFinite(dose) && dose >= 0 && isFinite(volL) && volL > 0;
+
+      volumeTag.textContent = `Volume: ${valid ? fmt(volL, 2) : "—"} L`;
+      targetTag.textContent = `Target: ${isFinite(dose) ? fmt(dose, 2) : "—"} mg/L`;
+
+      if (!valid){
+        tabletsOut.textContent = "— tablets";
+        subOut.textContent = "Enter values to calculate.";
+        detailsOut.textContent = "";
+        return;
+      }
+
+      const totalMg = dose * volL;
+      const exactTabs = totalMg / tab;
+      const roundedTabs = roundTablets(exactTabs, rounding.value);
+
+      const roundingLabel =
+        rounding.value === "exact" ? "Exact" :
+        rounding.value === "nearest" ? "Nearest whole" :
+        rounding.value === "up" ? "Rounded up" : "Rounded down";
+
+      tabletsOut.textContent = `${fmt(roundedTabs, 3)} tablet${roundedTabs === 1 ? "" : "s"}`;
+
+      subOut.innerHTML = `
+        <span class="${rounding.value === "exact" ? "ok" : "warn"}">${roundingLabel}</span>
+        from exact: <strong>${fmt(exactTabs, 3)}</strong>
+      `;
+
+      detailsOut.innerHTML = `
+        Total chlorine needed: <strong>${fmt(totalMg, 2)}</strong> mg<br/>
+        Tablet strength: <strong>${fmt(tab, 0)}</strong> mg/tablet<br/>
+        Formula: tablets = (mg/L × L) ÷ (mg/tablet)
+      `;
+    }
+
+    // init
+    setDose(10);
+    showMode();
+  </script>
+</body>
+</html>
